@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func,Integer,cast
 from api.admin.model import Admin
 from datetime import datetime
 from fastapi import HTTPException,status
@@ -80,7 +80,7 @@ def get_admin_sales_report_service(start_date, end_date, db):
     total_sales = db.query(func.sum(Order.total_value).label("total_sales")) \
                     .filter(Order.order_date.between(start_date, end_date)) \
                     .scalar() or 0.0
-    print(total_sales)
+
     return total_sales
 
 def get_top_customers_service(db):
@@ -100,17 +100,34 @@ def get_top_selling_books_service(limit, db):
     """
     Retrieve top-selling books based on total quantity sold.
     """
-    books = (
-        db.query(Book.title, func.sum(Order.quantity).label("total_sold"))
-        .join(Order, Book.id == Order.book_id) 
-        .group_by(Book.id, Book.title)        
-        .order_by(func.sum(Order.quantity).desc())  
-        .limit(limit) 
-        .all()
+    try:
+        expanded_orders = (
+        db.query(
+            func.json_array_elements_text(Order.book_id).label("book_id"),
+            func.json_array_elements_text(Order.quantity).label("quantity"),
+        )
+        .subquery("expanded_orders")
     )
-    return books
+
+    # Aggregate and sort by total quantity sold
+        books = (
+            db.query(
+                expanded_orders.c.book_id.label("book_id"),
+                func.sum(cast(expanded_orders.c.quantity, Integer)).label("total_sold"),
+            )
+            .group_by(expanded_orders.c.book_id)
+            .order_by(func.sum(cast(expanded_orders.c.quantity, Integer)).desc())
+            .limit(limit)
+            .all()
+        )
+
+        return [{"book_id": row.book_id, "total_sold": row.total_sold} for row in books]
 
 
+    except Exception as e:
+        return {"error": str(e)}
+
+   
 def get_top_rated_books_service(limit, db):
     """
     Retrieve products with the highest average ratings.
@@ -123,3 +140,18 @@ def get_top_rated_books_service(limit, db):
         .all()
     )
     return [{"title": book.title, "avg_rating": book.avg_rating} for book in books]
+
+def get_order_id(order_id,db):
+    return db.query(Order).filter(Order.id == order_id).first()
+
+def mark_order_completed_service(order,db):
+    order.status = "completed"
+    db.commit()
+    db.refresh(order)
+    return {"message": "Order status updated to completed", "order_id": order.id}
+
+def mark_order_cancelled_service(order,db):
+    order.status = "cancelled"
+    db.commit()
+    db.refresh(order)
+    return {"message": "Order status updated to cancelled", "order_id": order.id}

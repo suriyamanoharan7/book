@@ -159,3 +159,33 @@ def get_top_rated_books_controller(limit, db,tokens):
             raise HTTPException(status_code=404, detail={"success": False,'message': "No top rated books "})
     else:
         raise HTTPException(status_code=403,detail="Invalid token or expired token")
+    
+
+
+def mark_order_completed_controller(order_id,db,tokens):
+    check =decodeJWT(tokens)
+    admin = check.get("role")
+    if admin == 'admin':
+        if (order :=get_order_id(order_id,db)) in {None,False}:
+            raise HTTPException(status_code=404, detail="Order not found")
+        print(order.status)
+        if order.status.value != "pending":
+            raise HTTPException(status_code=400, detail="Only pending orders can be completed")
+        response = mark_order_completed_service(order,db)
+        return {"success":True,"records":response}
+    else:
+        raise HTTPException(status_code=403,detail="Invalid token or expired token")
+    
+def mark_order_cancelled_controller(order_id,db,tokens):
+    check =decodeJWT(tokens)
+    admin = check.get("role")
+    if admin == 'admin':
+        if (order :=get_order_id(order_id,db)) in {None,False}:
+            raise HTTPException(status_code=404, detail="Order not found")
+        print(order.status)
+        if order.status.value != "pending":
+            raise HTTPException(status_code=400, detail="Only pending orders can be cancelled")
+        response = mark_order_cancelled_service(order,db)
+        return {"success":True,"records":response}
+    else:
+        raise HTTPException(status_code=403,detail="Invalid token or expired token")

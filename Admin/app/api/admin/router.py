@@ -47,18 +47,26 @@ async def admin_delete_details(admin_id: int, database: Session = Depends(get_db
 async def admin_update_password(admin_id: int, ad: Adminpassword, db: Session = Depends(get_db), tokens: str = Depends(https_bearer)):
     return  admin_update_password_controller(db, admin_id, ad,tokens)
 
-@router.get("/admin/report/sales",tags=['Repport and Sales'])
+@router.get("/report/sales",tags=['Report and Sales'])
 async def get_admin_sales_report(start_date: str, end_date: str, db: Session = Depends(get_db), tokens: str = Depends(https_bearer)):
     return  get_admin_sales_report_controller(start_date,end_date,db,tokens)
 
-@router.get("/admin/reports/customer",tags=['Repport and Sales'])    
+@router.get("/reports/customer",tags=['Report and Sales'])    
 async def  get_top_customers(db:Session=Depends(get_db),tokens:str = Depends(https_bearer)):
     return get_top_customers_controller(db,tokens)
 
-@router.get("/admin/reports/top-selling-books/{limit}",tags=['Repport and Sales'])
+@router.get("/reports/top-selling-books/{limit}",tags=['Report and Sales'])
 async def get_top_selling(limit: int , db: Session = Depends(get_db), tokens: str = Depends(https_bearer)):
     return get_top_selling_books_controller(limit,db,tokens)
 
-@router.get("/admin/reports/top-rated-books",tags=['Repport and Sales'])
+@router.get("/reports/top-rated-books",tags=['Report and Sales'])
 async def get_top_rated_books(limit, db:Session=Depends(get_db),tokens:str=Depends(https_bearer)):
     return get_top_rated_books_controller(limit, db,tokens)
+
+@router.put("/orders/{order_id}/status/completed", tags=["Order"])
+async def mark_order_completed(order_id: int,db:Session=Depends(get_db),tokens:str = Depends(https_bearer)):
+    return mark_order_completed_controller(order_id,db,tokens)
+
+@router.put("/orders/{order_id}/status/cancelled", tags=["Order"])
+async def mark_order_cancelled(order_id: int,db:Session=Depends(get_db),tokens:str = Depends(https_bearer)):
+    return mark_order_cancelled_controller(order_id,db,tokens)
